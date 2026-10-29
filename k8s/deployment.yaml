@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: modelops-api
-          image: modelops-lite:1.0
+          image: modelops-lite:1.1
           imagePullPolicy: Never
           ports:
             - containerPort: 8000
