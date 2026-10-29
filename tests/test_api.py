@@ -66,3 +66,72 @@ def test_create_job_rejects_missing_name():
     response = client.post("/jobs", json={})
 
     assert response.status_code == 422
+
+
+
+def test_analyze_csv_returns_data_quality_report():
+    response = client.post(
+        "/analyze-csv",
+        files={
+            "file": (
+                "sample.csv",
+                "name,age\nAlice,25\nBob,30\n",
+                "text/csv",
+            )
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["filename"] == "sample.csv"
+    assert data["total_rows"] == 2
+    assert data["total_columns"] == 2
+    assert data["missing_values"] == {"name": 0, "age": 0}
+    assert data["duplicate_rows"] == 0
+    assert data["column_types"] == {
+        "name": "text",
+        "age": "numeric",
+    }
+
+
+def test_analyze_csv_detects_missing_values_and_duplicates():
+    response = client.post(
+        "/analyze-csv",
+        files={
+            "file": (
+                "sample.csv",
+                "name,age\nAlice,25\nBob,\nAlice,25\n",
+                "text/csv",
+            )
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["total_rows"] == 3
+    assert data["missing_values"] == {"name": 0, "age": 1}
+    assert data["duplicate_rows"] == 1
+
+
+def test_analyze_csv_rejects_non_csv_file():
+    response = client.post(
+        "/analyze-csv",
+        files={
+            "file": ("notes.txt", "hello", "text/plain"),
+        },
+    )
+
+    assert response.status_code == 400
+
+
+def test_analyze_csv_rejects_empty_column_header():
+    response = client.post(
+        "/analyze-csv",
+        files={
+            "file": ("sample.csv", "name,,age\nAlice,25,30\n", "text/csv"),
+        },
+    )
+
+    assert response.status_code == 400
